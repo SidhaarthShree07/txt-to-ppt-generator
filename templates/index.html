@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-PowerPoint Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <header class="row bg-primary text-white p-4">
+            <div class="col">
+                <h1 class="display-4 mb-2"><i class="fas fa-file-powerpoint me-3"></i>Text-to-PowerPoint Generator</h1>
+                <p class="lead">Transform your text into professional presentations using AI and your own templates</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="row">
+            <div class="col-lg-8 mx-auto">
+                
+                <!-- Progress Bar -->
+                <div class="progress-container mt-4" style="display: none;">
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div class="text-center">
+                        <span class="progress-text">Preparing...</span>
+                    </div>
+                </div>
+
+                <!-- Main Form -->
+                <div class="card mt-4 main-form">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0"><i class="fas fa-edit me-2"></i>Generate Your Presentation</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="presentation-form" enctype="multipart/form-data">
+                            
+                            <!-- Step 1: Text Content -->
+                            <div class="mb-4">
+                                <h5><i class="fas fa-pencil-alt me-2 text-primary"></i>Step 1: Enter Your Content</h5>
+                                <label for="text_content" class="form-label">Your text, markdown, or prose:</label>
+                                <textarea class="form-control" id="text_content" name="text_content" 
+                                         rows="8" placeholder="Paste your text content here. This can be markdown, plain text, or structured content that you want to convert into slides..." required></textarea>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Tip: The longer and more structured your text, the better the AI can organize it into slides.
+                                </div>
+                            </div>
+
+                            <!-- Step 2: Guidance (Optional) -->
+                            <div class="mb-4">
+                                <h5><i class="fas fa-compass me-2 text-primary"></i>Step 2: Provide Guidance (Optional)</h5>
+                                <label for="guidance" class="form-label">Presentation guidance:</label>
+                                <input type="text" class="form-control" id="guidance" name="guidance" 
+                                       placeholder="e.g., 'investor pitch deck', 'technical overview', 'sales presentation'">
+                                <div class="form-text">
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    Optional: Describe the type or tone of presentation you want.
+                                </div>
+                            </div>
+
+                            <!-- Step 3: API Key -->
+                            <div class="mb-4">
+                                <h5><i class="fas fa-key me-2 text-primary"></i>Step 3: Enter Your Gemini API Key</h5>
+                                <label for="api_key" class="form-label">Google Gemini API Key:</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="api_key" name="api_key" 
+                                           placeholder="Enter your Gemini API key" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="toggle-api-key">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    <i class="fas fa-shield-alt me-1"></i>
+                                    Your API key is never stored and only used for this session. 
+                                    <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-decoration-none">
+                                        Get your free Gemini API key here <i class="fas fa-external-link-alt ms-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Step 4: Template Upload -->
+                            <div class="mb-4">
+                                <h5><i class="fas fa-upload me-2 text-primary"></i>Step 4: Upload Your Template</h5>
+                                <label for="template" class="form-label">PowerPoint Template (.pptx or .potx):</label>
+                                <input class="form-control" type="file" id="template" name="template" 
+                                       accept=".pptx,.potx" required>
+                                <div class="form-text">
+                                    <i class="fas fa-file-powerpoint me-1"></i>
+                                    Upload a PowerPoint template file that defines the style, colors, and layout for your presentation.
+                                    Maximum file size: 50MB.
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-magic me-2"></i>Generate Presentation
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Result Section -->
+                <div class="card mt-4 result-section" style="display: none;">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0"><i class="fas fa-check-circle me-2 text-success"></i>Presentation Ready!</h3>
+                    </div>
+                    <div class="card-body text-center">
+                        <p class="lead">Your presentation has been successfully generated!</p>
+                        <button id="download-btn" class="btn btn-success btn-lg me-3">
+                            <i class="fas fa-download me-2"></i>Download Presentation
+                        </button>
+                        <button id="generate-another" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-plus me-2"></i>Generate Another
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Error Section -->
+                <div class="alert alert-danger error-section mt-4" style="display: none;">
+                    <h5><i class="fas fa-exclamation-triangle me-2"></i>Error</h5>
+                    <p class="error-message mb-0"></p>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="row bg-light mt-5 p-4">
+            <div class="col text-center">
+                <p class="text-muted mb-2">
+                    <i class="fab fa-github me-2"></i>
+                    Open source project - Available on 
+                    <a href="#" class="text-decoration-none">GitHub</a>
+                </p>
+                <p class="text-muted small mb-0">
+                    <i class="fas fa-lock me-1"></i>
+                    Your data is processed securely and never stored
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // DOM Elements
+        const form = document.getElementById('presentation-form');
+        const progressContainer = document.querySelector('.progress-container');
+        const progressBar = document.querySelector('.progress-bar');
+        const progressText = document.querySelector('.progress-text');
+        const mainForm = document.querySelector('.main-form');
+        const resultSection = document.querySelector('.result-section');
+        const errorSection = document.querySelector('.error-section');
+        const errorMessage = document.querySelector('.error-message');
+        const downloadBtn = document.getElementById('download-btn');
+        const generateAnotherBtn = document.getElementById('generate-another');
+        const toggleApiKeyBtn = document.getElementById('toggle-api-key');
+        const apiKeyInput = document.getElementById('api_key');
+
+        // Toggle API key visibility
+        toggleApiKeyBtn.addEventListener('click', () => {
+            const type = apiKeyInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            apiKeyInput.setAttribute('type', type);
+            const icon = toggleApiKeyBtn.querySelector('i');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Hide previous results
+            hideAllSections();
+            
+            // Validate form
+            if (!validateForm()) return;
+            
+            // Show progress
+            showProgress();
+            
+            try {
+                const formData = new FormData(form);
+                
+                updateProgress(20, 'Uploading files...');
+                
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                updateProgress(50, 'Processing with AI...');
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    updateProgress(80, 'Generating presentation...');
+                    
+                    // Simulate final processing time
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    updateProgress(100, 'Complete!');
+                    
+                    // Show success
+                    setTimeout(() => {
+                        showResult(result.download_url, result.session_id);
+                    }, 1000);
+                } else {
+                    throw new Error(result.error || 'Unknown error occurred');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message);
+            }
+        });
+
+        // Download button
+        downloadBtn.addEventListener('click', () => {
+            const downloadUrl = downloadBtn.getAttribute('data-download-url');
+            if (downloadUrl) {
+                window.location.href = downloadUrl;
+            }
+        });
+
+        // Generate another button
+        generateAnotherBtn.addEventListener('click', () => {
+            form.reset();
+            hideAllSections();
+            mainForm.style.display = 'block';
+        });
+
+        // Helper functions
+        function validateForm() {
+            const textContent = document.getElementById('text_content').value.trim();
+            const apiKey = document.getElementById('api_key').value.trim();
+            const template = document.getElementById('template').files[0];
+
+            if (!textContent) {
+                showError('Please enter some text content to convert.');
+                return false;
+            }
+
+            if (textContent.length < 50) {
+                showError('Please enter at least 50 characters of text for better results.');
+                return false;
+            }
+
+            if (!apiKey) {
+                showError('Please enter your Gemini API key.');
+                return false;
+            }
+
+            if (apiKey.length < 10) {
+                showError('Please enter a valid Gemini API key.');
+                return false;
+            }
+
+            if (!template) {
+                showError('Please upload a PowerPoint template file.');
+                return false;
+            }
+
+            const allowedTypes = ['.pptx', '.potx'];
+            const fileName = template.name.toLowerCase();
+            const isValidType = allowedTypes.some(type => fileName.endsWith(type));
+            
+            if (!isValidType) {
+                showError('Please upload a valid PowerPoint file (.pptx or .potx).');
+                return false;
+            }
+
+            if (template.size > 50 * 1024 * 1024) {
+                showError('Template file is too large. Maximum size is 50MB.');
+                return false;
+            }
+
+            return true;
+        }
+
+        function hideAllSections() {
+            progressContainer.style.display = 'none';
+            resultSection.style.display = 'none';
+            errorSection.style.display = 'none';
+        }
+
+        function showProgress() {
+            mainForm.style.display = 'none';
+            progressContainer.style.display = 'block';
+            updateProgress(10, 'Starting...');
+        }
+
+        function updateProgress(percent, text) {
+            progressBar.style.width = percent + '%';
+            progressText.textContent = text;
+        }
+
+        function showResult(downloadUrl, sessionId) {
+            progressContainer.style.display = 'none';
+            resultSection.style.display = 'block';
+            downloadBtn.setAttribute('data-download-url', downloadUrl);
+        }
+
+        function showError(message) {
+            hideAllSections();
+            mainForm.style.display = 'block';
+            errorSection.style.display = 'block';
+            errorMessage.textContent = message;
+            
+            // Auto-hide error after 10 seconds
+            setTimeout(() => {
+                errorSection.style.display = 'none';
+            }, 10000);
+        }
+
+        // Character counter for text area
+        const textArea = document.getElementById('text_content');
+        const charCounter = document.createElement('div');
+        charCounter.className = 'form-text text-end';
+        charCounter.innerHTML = '<small><span id="char-count">0</span> characters</small>';
+        textArea.parentNode.appendChild(charCounter);
+
+        textArea.addEventListener('input', () => {
+            const count = textArea.value.length;
+            document.getElementById('char-count').textContent = count.toLocaleString();
+        });
+
+        // File size display
+        document.getElementById('template').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const size = (file.size / 1024 / 1024).toFixed(2);
+                const sizeDisplay = document.createElement('div');
+                sizeDisplay.className = 'form-text';
+                sizeDisplay.innerHTML = `<i class="fas fa-file me-1"></i>Selected: ${file.name} (${size} MB)`;
+                
+                // Remove previous size display
+                const existing = e.target.parentNode.querySelector('.file-size-display');
+                if (existing) existing.remove();
+                
+                sizeDisplay.className += ' file-size-display';
+                e.target.parentNode.appendChild(sizeDisplay);
+            }
+        });
+    </script>
+</body>
+</html>
