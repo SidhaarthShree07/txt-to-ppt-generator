@@ -7,7 +7,7 @@ This document provides instructions for deploying the Text-to-PowerPoint Generat
 ### Quick Start
 ```bash
 # Clone and setup
-git clone <repository-url>
+git clone <https://github.com/SidhaarthShree07/txt-to-ppt-generator>
 cd text-to-powerpoint
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
