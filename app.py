@@ -1,32 +1,19 @@
-# Serve PDF files from the sessions directory
-from flask import send_from_directory
-from flask import send_file
+# Serve PDF files from the tmp directory
+from flask import send_from_directory, send_file, Flask, request, render_template, jsonify
 import os
 import tempfile
 import uuid
-from flask import Flask, request, render_template, jsonify, send_file
-from werkzeug.utils import secure_filename
 import logging
+import threading
+import requests
+from pathlib import Path
+import shutil
+import time
+from werkzeug.utils import secure_filename
 from src.llm_providers import GeminiProvider, OpenAIProvider
 from src.ppt_analyzer import PowerPointAnalyzer
 from src.slide_generator import SlideGenerator
 from src.utils import validate_file, cleanup_temp_files
-
-# Check if pptxtopdf is installed at startup
-try:
-    from pptxtopdf import convert
-except ImportError:
-    import sys
-    print("\nERROR: The 'pptxtopdf' package is not installed. Please run: pip install pptxtopdf\n", file=sys.stderr)
-    sys.exit(1)
-
-# Check if pythoncom is installed (required for pptxtopdf on Windows)
-try:
-    import pythoncom
-except ImportError:
-    import sys
-    print("\nERROR: The 'pythoncom' module is required (part of pywin32). Please run: pip install pywin32\n", file=sys.stderr)
-    sys.exit(1)
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -41,26 +28,123 @@ ALLOWED_EXTENSIONS = {'pptx', 'potx'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    
+# CloudConvert API key from environment variable
+CLOUDCONVERT_API_KEY = os.getenv("CLOUDCONVERT_API_KEY", "")
+
+def convert_pdf_bg(session_dir):
+    pptx_path = os.path.join(session_dir, 'output.pptx')
+    pdf_path = os.path.join(session_dir, 'output.pdf')
+
+    if not CLOUDCONVERT_API_KEY:
+        logger.warning("CloudConvert API key not set. Skipping PDF conversion.")
+        return
+
+    if not os.path.exists(pptx_path):
+        logger.error(f"PPTX not found: {pptx_path}")
+        return
+
+    # Only regenerate PDF if missing or older than PPTX
+    if not os.path.exists(pdf_path) or os.path.getmtime(pdf_path) < os.path.getmtime(pptx_path):
+        try:
+            logger.info("Starting CloudConvert PPTX → PDF conversion...")
+
+            # 1. Upload PPTX
+            with open(pptx_path, "rb") as f:
+                upload = requests.post(
+                    "https://api.cloudconvert.com/v2/import/upload",
+                    headers={"Authorization": f"Bearer {CLOUDCONVERT_API_KEY}"},
+                    files={"file": f}
+                ).json()
+
+            if "data" not in upload:
+                logger.error(f"Upload failed: {upload}")
+                return
+
+            input_file = upload["data"]["id"]
+
+            # 2. Convert PPTX → PDF
+            job = requests.post(
+                "https://api.cloudconvert.com/v2/jobs",
+                headers={"Authorization": f"Bearer {CLOUDCONVERT_API_KEY}"},
+                json={
+                    "tasks": {
+                        "import-pptx": {
+                            "operation": "import/upload"
+                        },
+                        "convert-task": {
+                            "operation": "convert",
+                            "input": "import-pptx",
+                            "input_format": "pptx",
+                            "output_format": "pdf"
+                        },
+                        "export-pdf": {
+                            "operation": "export/url",
+                            "input": "convert-task"
+                        }
+                    }
+                }
+            ).json()
+
+            if "data" not in job:
+                logger.error(f"Job creation failed: {job}")
+                return
+
+            job_id = job["data"]["id"]
+            logger.info(f"CloudConvert job started: {job_id}")
+
+            # 3. Poll job status until finished
+            while True:
+                status = requests.get(
+                    f"https://api.cloudconvert.com/v2/jobs/{job_id}",
+                    headers={"Authorization": f"Bearer {CLOUDCONVERT_API_KEY}"}
+                ).json()
+                job_status = status["data"]["status"]
+
+                if job_status == "finished":
+                    break
+                elif job_status == "error":
+                    logger.error(f"CloudConvert job failed: {status}")
+                    return
+
+            # 4. Download PDF
+            export_task = next(
+                t for t in status["data"]["tasks"] if t["name"] == "export-pdf"
+            )
+            file_url = export_task["result"]["files"][0]["url"]
+
+            pdf_response = requests.get(file_url)
+            with open(pdf_path, "wb") as f:
+                f.write(pdf_response.content)
+
+            logger.info(f"PDF saved: {pdf_path}")
+
+        except Exception as e:
+            logger.error(f"Exception during CloudConvert conversion: {e}")
+
+# Run conversion in background
+def start_pdf_conversion(session_dir):
+    threading.Thread(target=convert_pdf_bg, args=(session_dir,), daemon=True).start()
 
 @app.route('/')
 def index():
-    """Render the main page and clean up old session directories"""
-    import time
-    sessions_root = 'sessions'
+    """Render the main page and clean up old tmp session directories"""
+
+    tmp_root = Path(tempfile.gettempdir())
     now = time.time()
     max_age = 120  # seconds
-    if os.path.exists(sessions_root):
-        for session_id in os.listdir(sessions_root):
-            session_dir = os.path.join(sessions_root, session_id)
-            if os.path.isdir(session_dir):
-                try:
-                    mtime = os.path.getmtime(session_dir)
-                    if now - mtime > max_age:
-                        import shutil
-                        shutil.rmtree(session_dir)
-                except Exception as e:
-                    logger.warning(f"Failed to delete old session dir {session_dir}: {e}")
-    return render_template('index.html')
+
+    for session_dir in tmp_root.iterdir():
+        if session_dir.is_dir() and session_dir.name.startswith("pptgen-"):
+            try:
+                mtime = session_dir.stat().st_mtime
+                if now - mtime > max_age:
+                    shutil.rmtree(session_dir)
+                    logger.info(f"Deleted old tmp dir: {session_dir}")
+            except Exception as e:
+                logger.warning(f"Failed to delete old tmp dir {session_dir}: {e}")
+
+    return render_template("index.html")
 
 @app.route('/api/generate', methods=['POST'])
 def generate_presentation():
@@ -76,7 +160,6 @@ def generate_presentation():
         
         if not allowed_file(file.filename):
             return jsonify({'error': 'Invalid file type. Only .pptx and .potx files are allowed'}), 400
-        
 
         # Get form data
         text_content = request.form.get('text_content', '').strip()
@@ -111,13 +194,12 @@ def generate_presentation():
             except Exception:
                 target_num_slides = MIN_SLIDES
 
-        # Generate unique session ID for file management
-        session_id = str(uuid.uuid4())
-        # Create session directory
-        session_dir = os.path.join('sessions', session_id)
+                # Create unique tmp session dir
+        session_id = f"pptgen-{uuid.uuid4()}"
+        session_dir = os.path.join(tempfile.gettempdir(), session_id)
         os.makedirs(session_dir, exist_ok=True)
 
-        # Save uploaded template in session dir
+        # Save uploaded template
         filename = secure_filename(file.filename)
         template_path = os.path.join(session_dir, f"template_{filename}")
         file.save(template_path)
@@ -202,26 +284,7 @@ def generate_presentation():
         os.remove(template_path)
 
         # --- Trigger PDF conversion in background ---
-
-        import threading
-        def convert_pdf_bg(session_dir):
-            pptx_path = os.path.join(session_dir, 'output.pptx')
-            pdf_path = os.path.join(session_dir, 'output.pdf')
-            if not os.path.exists(pptx_path):
-                return
-            if not os.path.exists(pdf_path) or os.path.getmtime(pdf_path) < os.path.getmtime(pptx_path):
-                try:
-                    pythoncom.CoInitialize()
-                    try:
-                        result = convert(session_dir, session_dir)
-                        if not result:
-                            logger.error(f"PDF conversion failed in background for {session_dir}")
-                    finally:
-                        pythoncom.CoUninitialize()
-                except Exception as e:
-                    logger.error(f"Exception during background PDF conversion: {e}")
-
-        threading.Thread(target=convert_pdf_bg, args=(session_dir,), daemon=True).start()
+        start_pdf_conversion(session_dir)
 
         # Return success response with download info
         return jsonify({
@@ -239,7 +302,7 @@ def generate_presentation():
 # Endpoint to check if PDF is ready for preview
 @app.route('/api/pdf_status/<session_id>')
 def pdf_status(session_id):
-    session_dir = os.path.join('sessions', session_id)
+    session_dir = os.path.join(tempfile.gettempdir(), session_id)
     pdf_path = os.path.join(session_dir, 'output.pdf')
     ready = os.path.exists(pdf_path)
     return jsonify({'ready': ready})
@@ -248,7 +311,7 @@ def pdf_status(session_id):
 def preview_presentation(session_id):
     """Preview the generated presentation content"""
     try:
-        file_path = os.path.join('sessions', session_id, 'output.pptx')
+        file_path = os.path.join(tempfile.gettempdir(), session_id, 'output.pptx')
         
         if not os.path.exists(file_path):
             return jsonify({'error': 'File not found or expired'}), 404
@@ -346,24 +409,12 @@ def preview_presentation(session_id):
 
 @app.route('/api/download/<session_id>')
 def download_presentation(session_id):
-    """Download the generated presentation"""
-    try:
-        file_path = os.path.join('sessions', session_id, 'output.pptx')
-        session_dir = os.path.join('sessions', session_id)
-        if not os.path.exists(file_path):
-            return jsonify({'error': 'File not found or expired'}), 404
-
-        response = send_file(
-            file_path,
-            as_attachment=True,
-            download_name='generated_presentation.pptx',
-            mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation'
-        )
-
-        return response
-    except Exception as e:
-        logger.error(f"Error downloading file: {str(e)}")
-        return jsonify({'error': 'Failed to download file'}), 500
+    file_path = os.path.join(tempfile.gettempdir(), session_id, 'output.pptx')
+    if not os.path.exists(file_path):
+        return jsonify({'error': 'File not found or expired'}), 404
+    return send_file(file_path, as_attachment=True,
+                     download_name='generated_presentation.pptx',
+                     mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation')
 
 @app.route('/api/models')
 def get_available_models():
@@ -420,10 +471,9 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Export app for Vercel
 # Vercel will automatically detect this as the WSGI application
 
-
 @app.route('/sessions/<session_id>/output.pdf')
 def serve_pdf(session_id):
-    session_dir = os.path.join('sessions', session_id)
+    session_dir = os.path.join(tempfile.gettempdir(), session_id)
     pdf_path = os.path.join(session_dir, 'output.pdf')
     if not os.path.exists(pdf_path):
         return 'PDF not found', 404
