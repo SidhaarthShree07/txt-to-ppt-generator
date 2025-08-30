@@ -6,6 +6,8 @@ Simple run script for the Text-to-PowerPoint Generator
 import os
 import sys
 from app import app
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 def main():
     """Main entry point for the application"""

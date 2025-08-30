@@ -5,6 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Text-to-PowerPoint Generator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/darkly/bootstrap.min.css" rel="stylesheet">
+    <style>
+    input, select, textarea, .form-control, .form-select {
+        background-color: #23272b !important;
+        color: #e0e0e0 !important;
+        border: 1px solid #444 !important;
+    }
+    input:focus, select:focus, textarea:focus, .form-control:focus, .form-select:focus {
+        background-color: #23272b !important;
+        color: #fff !important;
+        border-color: #007bff !important;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25) !important;
+    }
+    body, .bg-dark, .main-form, .result-section, .preview-section {
+        background-color: #181c20 !important;
+        color: #e0e0e0 !important;
+    }
+    .card, .card-header, .card-body, .card-footer {
+        background-color: #23272b !important;
+        color: #e0e0e0 !important;
+        border: none;
+    }
+    .bg-darkly-footer {
+        background: #181c20 !important;
+        color: #888 !important;
+        border-top: 1px solid #23272b;
+    }
+    </style>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 </head>
@@ -40,6 +68,17 @@
                     </div>
                     <div class="card-body">
                         <form id="presentation-form" enctype="multipart/form-data">
+                            <!-- Step 6: Number of Slides -->
+                            <div class="mb-4">
+                                <h5><i class="fas fa-sliders-h me-2 text-primary"></i>Step 6: Options</h5>
+                                <div class="row g-3 align-items-center">
+                                    <div class="col-md-12">
+                                        <label for="num_slides" class="form-label">Number of Slides:</label>
+                                        <input type="number" class="form-control" id="num_slides" name="num_slides" min="7" max="40" value="7" required>
+                                        <div class="form-text">Minimum 7, maximum 40. Default is 7. Images from template will be automatically reused.</div>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <!-- Step 1: Text Content -->
                             <div class="mb-4">
@@ -65,29 +104,54 @@
                                 </div>
                             </div>
 
-                            <!-- Step 3: API Key -->
+                            <!-- Step 3: AI Provider Selection -->
                             <div class="mb-4">
-                                <h5><i class="fas fa-key me-2 text-primary"></i>Step 3: Enter Your Gemini API Key</h5>
-                                <label for="api_key" class="form-label">Google Gemini API Key:</label>
+                                <h5><i class="fas fa-robot me-2 text-primary"></i>Step 3: Choose AI Provider</h5>
+                                <div class="mb-2"><span class="text-info">For best results, use the <b>gemini-2.5-pro</b> model.</span></div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="ai_provider" class="form-label">AI Provider:</label>
+                                        <select class="form-select" id="ai_provider" name="ai_provider" required>
+                                            <option value="gemini" selected>Google Gemini</option>
+                                            <option value="openai">OpenAI ChatGPT</option>
+                                            <option value="aipipe">AI Pipe (Multiple Models)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="ai_model" class="form-label">Model:</label>
+                                        <select class="form-select" id="ai_model" name="ai_model">
+                                            <option value="">Loading models...</option>
+                                        </select>
+                                        <div class="form-text">
+                                            <small>Different models offer varying capabilities and speeds. For Gemini, select from all available models.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 4: API Key -->
+                            <div class="mb-4">
+                                <h5><i class="fas fa-key me-2 text-primary"></i>Step 4: Enter Your API Key</h5>
+                                <label for="api_key" class="form-label" id="api_key_label">Google Gemini API Key:</label>
                                 <div class="input-group">
                                     <input type="password" class="form-control" id="api_key" name="api_key" 
-                                           placeholder="Enter your Gemini API key" required>
+                                           placeholder="Enter your API key" required>
                                     <button class="btn btn-outline-secondary" type="button" id="toggle-api-key">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
-                                <div class="form-text">
+                                <div class="form-text" id="api_key_help">
                                     <i class="fas fa-shield-alt me-1"></i>
                                     Your API key is never stored and only used for this session. 
-                                    <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-decoration-none">
+                                    <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-decoration-none" id="api_key_link">
                                         Get your free Gemini API key here <i class="fas fa-external-link-alt ms-1"></i>
                                     </a>
                                 </div>
                             </div>
 
-                            <!-- Step 4: Template Upload -->
+                            <!-- Step 5: Template Upload -->
                             <div class="mb-4">
-                                <h5><i class="fas fa-upload me-2 text-primary"></i>Step 4: Upload Your Template</h5>
+                                <h5><i class="fas fa-upload me-2 text-primary"></i>Step 5: Upload Your Template</h5>
                                 <label for="template" class="form-label">PowerPoint Template (.pptx or .potx):</label>
                                 <input class="form-control" type="file" id="template" name="template" 
                                        accept=".pptx,.potx" required>
@@ -115,12 +179,43 @@
                     </div>
                     <div class="card-body text-center">
                         <p class="lead">Your presentation has been successfully generated!</p>
-                        <button id="download-btn" class="btn btn-success btn-lg me-3">
-                            <i class="fas fa-download me-2"></i>Download Presentation
-                        </button>
+                        <div class="mb-3">
+                            <button id="preview-btn" class="btn btn-info btn-lg me-3">
+                                <i class="fas fa-eye me-2"></i>Preview Slides
+                            </button>
+                            <button id="download-btn" class="btn btn-success btn-lg me-3">
+                                <i class="fas fa-download me-2"></i>Download Presentation
+                            </button>
+                        </div>
                         <button id="generate-another" class="btn btn-outline-primary btn-lg">
                             <i class="fas fa-plus me-2"></i>Generate Another
                         </button>
+                    </div>
+                </div>
+                
+                <!-- Preview Section -->
+                <div class="card mt-4 preview-section" style="display: none;">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0"><i class="fas fa-eye me-2"></i>Presentation PDF Preview</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="ppt-pdf-preview-container" style="display:none;">
+                            <iframe id="ppt-pdf-preview" style="width:100%; min-height:600px; border:none; background:#23272b; border-radius:8px;" allowfullscreen></iframe>
+                            <div class="text-center mt-3">
+                                <button id="fallback-text-preview" class="btn btn-outline-info btn-sm">Show Text Preview Instead</button>
+                            </div>
+                        </div>
+                        <div id="preview-content">
+                            <!-- Slides will be loaded here (text fallback) -->
+                        </div>
+                        <div class="text-center mt-4">
+                            <button id="download-after-preview" class="btn btn-success btn-lg me-3">
+                                <i class="fas fa-download me-2"></i>Download Presentation
+                            </button>
+                            <button id="back-to-result" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-arrow-left me-2"></i>Back
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -134,7 +229,7 @@
         </main>
 
         <!-- Footer -->
-        <footer class="row bg-light mt-5 p-4">
+    <footer class="row bg-darkly-footer mt-5 p-4">
             <div class="col text-center">
                 <p class="text-muted mb-2">
                     <i class="fab fa-github me-2"></i>
@@ -161,12 +256,91 @@
         const progressText = document.querySelector('.progress-text');
         const mainForm = document.querySelector('.main-form');
         const resultSection = document.querySelector('.result-section');
+        const previewSection = document.querySelector('.preview-section');
         const errorSection = document.querySelector('.error-section');
         const errorMessage = document.querySelector('.error-message');
         const downloadBtn = document.getElementById('download-btn');
+        const previewBtn = document.getElementById('preview-btn');
+        const downloadAfterPreviewBtn = document.getElementById('download-after-preview');
+        const backToResultBtn = document.getElementById('back-to-result');
         const generateAnotherBtn = document.getElementById('generate-another');
         const toggleApiKeyBtn = document.getElementById('toggle-api-key');
         const apiKeyInput = document.getElementById('api_key');
+        
+        let currentSessionId = null;
+        let availableModels = {};
+        
+        // Load available models on page load
+        async function loadAvailableModels() {
+            try {
+                const response = await fetch('/api/models');
+                const models = await response.json();
+                availableModels = models;
+                updateModelDropdown();
+            } catch (error) {
+                console.error('Failed to load models:', error);
+            }
+        }
+        
+        // Update model dropdown based on selected provider
+        function updateModelDropdown() {
+            const providerSelect = document.getElementById('ai_provider');
+            const modelSelect = document.getElementById('ai_model');
+            const selectedProvider = providerSelect.value;
+            
+            // Clear existing options
+            modelSelect.innerHTML = '';
+            
+            if (availableModels[selectedProvider]) {
+                const models = availableModels[selectedProvider].models;
+                const defaultModel = availableModels[selectedProvider].default;
+                
+                models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    if (model === defaultModel) {
+                        option.selected = true;
+                    }
+                    modelSelect.appendChild(option);
+                });
+            }
+        }
+        
+        // Update API key label and help text based on provider
+        function updateApiKeyInfo() {
+            const providerSelect = document.getElementById('ai_provider');
+            const apiKeyLabel = document.getElementById('api_key_label');
+            const apiKeyHelp = document.getElementById('api_key_help');
+            const apiKeyLink = document.getElementById('api_key_link');
+            const selectedProvider = providerSelect.value;
+            
+            if (selectedProvider === 'gemini') {
+                apiKeyLabel.textContent = 'Google Gemini API Key:';
+                apiKeyLink.href = 'https://makersuite.google.com/app/apikey';
+                apiKeyLink.innerHTML = 'Get your free Gemini API key here <i class="fas fa-external-link-alt ms-1"></i>';
+            } else if (selectedProvider === 'openai') {
+                apiKeyLabel.textContent = 'OpenAI API Key:';
+                apiKeyLink.href = 'https://platform.openai.com/api-keys';
+                apiKeyLink.innerHTML = 'Get your OpenAI API key here <i class="fas fa-external-link-alt ms-1"></i>';
+            } else if (selectedProvider === 'aipipe') {
+                apiKeyLabel.textContent = 'AI Pipe Token:';
+                apiKeyLink.href = 'https://aipipe.org/login';
+                apiKeyLink.innerHTML = 'Get your AI Pipe token here <i class="fas fa-external-link-alt ms-1"></i>';
+            }
+        }
+        
+        // Provider change handler
+        document.getElementById('ai_provider').addEventListener('change', () => {
+            updateModelDropdown();
+            updateApiKeyInfo();
+        });
+        
+        // Load models on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAvailableModels();
+            updateApiKeyInfo();
+        });
 
         // Toggle API key visibility
         toggleApiKeyBtn.addEventListener('click', () => {
@@ -192,26 +366,31 @@
             
             try {
                 const formData = new FormData(form);
-                
+                // Add number of slides explicitly
+                const numSlides = document.getElementById('num_slides').value;
+                formData.set('num_slides', numSlides);
+                // Always reuse images from template
+                formData.set('reuse_images', 'true');
+
                 updateProgress(20, 'Uploading files...');
-                
+
                 const response = await fetch('/api/generate', {
                     method: 'POST',
                     body: formData
                 });
-                
+
                 updateProgress(50, 'Processing with AI...');
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     updateProgress(80, 'Generating presentation...');
-                    
+
                     // Simulate final processing time
                     await new Promise(resolve => setTimeout(resolve, 2000));
-                    
+
                     updateProgress(100, 'Complete!');
-                    
+
                     // Show success
                     setTimeout(() => {
                         showResult(result.download_url, result.session_id);
@@ -219,7 +398,7 @@
                 } else {
                     throw new Error(result.error || 'Unknown error occurred');
                 }
-                
+
             } catch (error) {
                 console.error('Error:', error);
                 showError(error.message);
@@ -310,6 +489,192 @@
             progressContainer.style.display = 'none';
             resultSection.style.display = 'block';
             downloadBtn.setAttribute('data-download-url', downloadUrl);
+            currentSessionId = sessionId;
+            // Hide preview button initially
+            previewBtn.style.display = 'none';
+            // Poll for PDF readiness
+            pollPdfReady(sessionId);
+        }
+
+        // Poll /api/pdf_status/<session_id> until PDF is ready, then show preview button
+        function pollPdfReady(sessionId) {
+            const interval = setInterval(() => {
+                fetch(`/api/pdf_status/${sessionId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.ready) {
+                            clearInterval(interval);
+                            previewBtn.style.display = 'inline-block';
+                        }
+                    });
+            }, 1500);
+        }
+        
+
+        // Preview button functionality (now uses direct PDF path)
+        previewBtn.addEventListener('click', async () => {
+            if (!currentSessionId) return;
+            previewBtn.disabled = true;
+            previewBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading PDF Preview...';
+            const pptPdfContainer = document.getElementById('ppt-pdf-preview-container');
+            const pptPdfIframe = document.getElementById('ppt-pdf-preview');
+            const previewContent = document.getElementById('preview-content');
+            pptPdfContainer.style.display = 'none';
+            previewContent.style.display = 'none';
+            try {
+                pptPdfIframe.src = `/sessions/${currentSessionId}/output.pdf`;
+                pptPdfIframe.onload = function() {
+                    pptPdfContainer.style.display = 'block';
+                    previewContent.style.display = 'none';
+                };
+                pptPdfIframe.onerror = function() {
+                    pptPdfContainer.style.display = 'none';
+                    showTextPreviewFallback();
+                };
+                // Set a timeout in case iframe fails silently
+                setTimeout(() => {
+                    // If PDF loads, show it, else fallback
+                    if (pptPdfIframe.contentDocument && pptPdfIframe.contentDocument.body && pptPdfIframe.contentDocument.body.innerHTML.trim().length > 0) {
+                        pptPdfContainer.style.display = 'block';
+                        previewContent.style.display = 'none';
+                    } else {
+                        pptPdfContainer.style.display = 'none';
+                        showTextPreviewFallback();
+                    }
+                }, 3500);
+            } catch (err) {
+                pptPdfContainer.style.display = 'none';
+                showTextPreviewFallback();
+            } finally {
+                previewSection.style.display = 'block';
+                resultSection.style.display = 'none';
+                previewBtn.disabled = false;
+                previewBtn.innerHTML = '<i class="fas fa-eye me-2"></i>Preview Slides';
+            }
+            // Fallback handler
+            async function showTextPreviewFallback() {
+                const response = await fetch(`/api/preview/${currentSessionId}`);
+                const result = await response.json();
+                if (result.success) {
+                    showPreview(result.slides, result.total_slides);
+                } else {
+                    showError(result.error || 'Failed to load preview');
+                }
+                previewContent.style.display = 'block';
+                pptPdfContainer.style.display = 'none';
+            }
+        });
+
+        // Fallback to text preview button
+        document.getElementById('fallback-text-preview').addEventListener('click', async () => {
+            document.getElementById('ppt-pdf-preview-container').style.display = 'none';
+            // Fetch and show text preview
+            const response = await fetch(`/api/preview/${currentSessionId}`);
+            const result = await response.json();
+            if (result.success) {
+                showPreview(result.slides, result.total_slides);
+            } else {
+                showError(result.error || 'Failed to load preview');
+            }
+            document.getElementById('preview-content').style.display = 'block';
+        });
+        
+        // Back to result button
+        backToResultBtn.addEventListener('click', () => {
+            previewSection.style.display = 'none';
+            resultSection.style.display = 'block';
+        });
+        
+        // Download after preview button
+        downloadAfterPreviewBtn.addEventListener('click', () => {
+            const downloadUrl = downloadBtn.getAttribute('data-download-url');
+            if (downloadUrl) {
+                window.location.href = downloadUrl;
+            }
+        });
+        
+        function showPreview(slides, totalSlides) {
+            resultSection.style.display = 'none';
+            previewSection.style.display = 'block';
+            
+            const previewContent = document.getElementById('preview-content');
+            previewContent.innerHTML = `
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Preview Generated:</strong> ${totalSlides} slides created from your content.
+                    <br><small>This preview shows the text content. Download to see the full formatted presentation with your template styling.</small>
+                </div>
+            `;
+            
+            slides.forEach((slide, index) => {
+                // Determine slide type styling
+                let slideTypeIcon = 'fas fa-file-powerpoint';
+                let slideTypeColor = 'primary';
+                let headerClass = 'bg-dark text-light';
+                if (slide.slide_type === 'title') {
+                    slideTypeIcon = 'fas fa-home';
+                    slideTypeColor = 'success';
+                    headerClass = 'bg-success text-white';
+                } else if (slide.slide_type === 'conclusion') {
+                    slideTypeIcon = 'fas fa-flag-checkered';
+                    slideTypeColor = 'warning';
+                    headerClass = 'bg-warning text-dark';
+                }
+                // SVG thumbnail for slide
+                const svgThumb = `
+                  <div class="slide-thumbnail">
+                    <svg viewBox="0 0 80 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="2" y="2" width="76" height="56" rx="8" fill="#23272b" stroke="#444" stroke-width="3"/>
+                      <rect x="10" y="10" width="60" height="10" rx="2" fill="#343a40"/>
+                      <rect x="10" y="24" width="60" height="6" rx="2" fill="#343a40"/>
+                      <rect x="10" y="34" width="60" height="6" rx="2" fill="#343a40"/>
+                      <rect x="10" y="44" width="40" height="6" rx="2" fill="#343a40"/>
+                    </svg>
+                  </div>
+                `;
+                const slideHtml = `
+                    <div class="card mb-4 slide-preview shadow-sm">
+                        <div class="card-header ${headerClass}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="${slideTypeIcon} me-2"></i>
+                                    Slide ${slide.slide_number}
+                                </h5>
+                                <span class="badge bg-secondary">${slide.slide_type}</span>
+                            </div>
+                            ${slide.layout_name ? `<small class="text-muted">Layout: ${slide.layout_name}</small>` : ''}
+                        </div>
+                        <div class="card-body" style="min-height: 120px;">
+                            ${svgThumb}
+                            <div class="slide-content-preview">
+                                ${slide.title ? `
+                                    <div class="text-center mb-3">
+                                        <h3 class="fw-bold text-light" style="font-size: ${slide.slide_type === 'title' ? '1.8rem' : '1.4rem'}">${slide.title}</h3>
+                                        ${slide.subtitle ? `<h5 class="text-muted">${slide.subtitle}</h5>` : ''}
+                                    </div>
+                                ` : ''}
+                                ${slide.content.length > 0 ? `
+                                    <div class="slide-bullets mt-3" style="padding-left: 20px;">
+                                        ${slide.content.map(item => `
+                                            <div class="mb-2 d-flex align-items-start">
+                                                <i class="fas fa-chevron-right me-2 mt-1 text-primary" style="font-size: 0.8rem;"></i>
+                                                <span style="line-height: 1.4;">${item}</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : slide.slide_type === 'title' ? '' : '<p class="text-muted text-center mt-4"><i class="fas fa-info-circle me-2"></i>No content detected for this slide.</p>'}
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                This is a preview - actual formatting will use your template styling
+                            </small>
+                        </div>
+                    </div>
+                `;
+                previewContent.innerHTML += slideHtml;
+            });
         }
 
         function showError(message) {

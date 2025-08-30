@@ -364,6 +364,42 @@ input[type="file"]::-webkit-file-upload-button:hover {
     animation: checkmark 0.8s ease-out;
 }
 
+/* Preview Section */
+.slide-preview {
+    transition: transform 0.2s ease;
+}
+
+.slide-preview:hover {
+    transform: translateY(-2px);
+}
+
+.preview-section .card-body {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.slide-preview .card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.slide-preview .card-body {
+    padding: 1.25rem;
+}
+
+.slide-preview .list-unstyled li {
+    padding: 0.25rem 0;
+    border-left: 3px solid transparent;
+    padding-left: 1rem;
+    transition: all 0.2s ease;
+}
+
+.slide-preview .list-unstyled li:hover {
+    border-left-color: var(--primary-color);
+    background-color: #f8f9fa;
+    transform: translateX(3px);
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 8px;

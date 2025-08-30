@@ -110,13 +110,21 @@ The system creates a comprehensive inventory of template assets:
 
 ## Technical Architecture
 
-### Core Components
+### Core Components and Modules
 
-1. **Flask Web Application** (`app.py`): Handles HTTP requests, file uploads, and response generation
-2. **Gemini Provider** (`llm_providers.py`): Manages AI communication and response parsing
-3. **Template Analyzer** (`ppt_analyzer.py`): Extracts and catalogs template information
-4. **Slide Generator** (`slide_generator.py`): Creates new slides using parsed content and template styles
-5. **Utility Functions** (`utils.py`): File validation, cleanup, and helper functions
+- **app.py**: Main Flask web application. Handles all HTTP endpoints, file uploads, session management, PDF preview serving, and session directory cleanup.
+- **run.py**: Alternate entry point for running the app in development or production.
+- **src/content_mapper.py**: Maps AI-generated content to the best-matching template slides.
+- **src/format_detector.py**: Detects content formats and determines placeholder capacities for mapping.
+- **src/llm_providers.py**: Integrates with LLM APIs (Gemini, OpenAI, AIPipe) and manages prompt engineering and response parsing.
+- **src/multi_placeholder_handler.py**: Handles content distribution for slides with multiple text placeholders.
+- **src/ppt_analyzer.py**: Analyzes PowerPoint templates, extracts layouts, placeholders, colors, fonts, and images.
+- **src/robust_pipeline.py**: Orchestrates robust, multi-step slide generation, mapping, and refinement for complex templates.
+- **src/simple_slide_replacer.py**: Replaces placeholder text with generated content, including multi-placeholder support.
+- **src/slide_generator.py**: Core logic for creating slides, enforcing slide count, and applying template styles.
+- **src/slide_refiner.py**: Refines slide content to match exact placeholder requirements, supports parallel processing.
+- **src/smart_mapper.py**: Matches AI-generated content to template slides based on format and layout analysis.
+- **src/utils.py**: Utility functions for file validation, cleanup, and other helpers.
 
 ### Processing Workflow
 
@@ -149,6 +157,14 @@ Multiple fallback mechanisms ensure the application produces usable output even 
 ### 4. Scalable Architecture
 The modular design allows for easy extension to support additional AI providers, template formats, or output types.
 
+# PDF Preview and Session Management
+
+The Text-to-PowerPoint Generator automatically generates a PDF preview of each presentation in the background after the PowerPoint file is created. The frontend polls a dedicated status endpoint and only enables the PDF preview button when the PDF is ready. The PDF is served directly via a secure endpoint for each session.
+
+Session directories are managed for security and efficiency. On every home page load, the backend deletes all session directories older than 120 seconds, ensuring that temporary files are regularly cleaned up and storage is not wasted.
+
+The system does not expose any endpoints for direct PDF conversion requests; all preview and download functionality is handled through the main workflow and secure file serving.
+
 ## Performance Considerations
 
 - **Memory Management**: Large PowerPoint files are processed efficiently with automatic cleanup
@@ -160,9 +176,7 @@ The modular design allows for easy extension to support additional AI providers,
 
 The architecture supports several planned enhancements:
 - **Speaker Notes Generation**: AI-generated presentation notes
-- **Multiple Style Modes**: Different presentation styles for various use cases
 - **Batch Processing**: Multiple presentations from different text sources
 - **Advanced Layout Preservation**: More sophisticated template layout analysis
-- **Real-time Preview**: Live preview of slides before final generation
 
 This implementation successfully bridges the gap between raw text content and professional presentation design, leveraging both AI intelligence and human aesthetic preferences encoded in PowerPoint templates.

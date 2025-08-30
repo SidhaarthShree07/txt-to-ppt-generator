@@ -117,25 +117,30 @@ Template styles are preserved through:
 ### Project Structure
 ```
 text-to-powerpoint/
-├── app.py                 # Main Flask application
-├── requirements.txt       # Python dependencies
-├── static/               # CSS, JS, and static assets
-│   ├── css/
-│   ├── js/
-│   └── images/
-├── templates/            # HTML templates
+├── app.py                      # Main Flask application (all endpoints, session management, PDF preview)
+├── run.py                      # Alternate entry point for running the app
+├── requirements.txt            # Python dependencies
+├── static/                     # CSS, JS, and static assets
+│   └── css/
+│       └── style.css
+├── templates/                  # HTML templates
 │   └── index.html
-├── src/                  # Core application modules
-│   ├── llm_providers.py  # LLM API integrations
-│   ├── ppt_analyzer.py   # PowerPoint template analysis
-│   ├── slide_generator.py # Slide creation logic
-│   └── utils.py          # Utility functions
-└── tests/                # Unit tests
-```
-
-### Running Tests
-```bash
-python -m pytest tests/
+├── src/                        # Core application modules
+│   ├── content_mapper.py           # Maps AI content to best-matching template slides
+│   ├── format_detector.py          # Detects content formats and placeholder capacities
+│   ├── llm_providers.py            # LLM API integrations (Gemini, OpenAI, AIPipe)
+│   ├── multi_placeholder_handler.py # Handles content for slides with multiple placeholders
+│   ├── ppt_analyzer.py             # PowerPoint template analysis and asset extraction
+│   ├── robust_pipeline.py          # Orchestrates robust, multi-step slide generation
+│   ├── simple_slide_replacer.py    # Replaces placeholder text with generated content
+│   ├── slide_generator.py          # Slide creation logic and enforcement of slide count
+│   ├── slide_refiner.py            # Refines content to match placeholder requirements
+│   ├── smart_mapper.py             # Matches AI content to template slides based on format
+│   └── utils.py                    # File validation, cleanup, and helper functions
+├── IMPLEMENTATION.md           # Technical implementation details
+├── DEPLOYMENT.md               # Deployment instructions
+├── README.md                   # This file
+└── VERCEL_DEPLOY.md            # Vercel-specific deployment guide
 ```
 
 ## Limitations
@@ -149,6 +154,5 @@ python -m pytest tests/
 
 - Speaker notes generation
 - Multiple presentation style modes
-- Slide preview functionality
 - Batch processing capabilities
 - Advanced layout preservation
