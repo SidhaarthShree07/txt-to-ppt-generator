@@ -20,7 +20,7 @@ A web application that automatically converts text or markdown into professional
 
 ## Quick Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/text-to-powerpoint)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SidhaarthShree07/txt-to-ppt-generator)
 
 ## Technology Stack
 
@@ -93,7 +93,7 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/SidhaarthShree07/txt-to-ppt-generator) file for details.
 
 ## Architecture Overview
 
