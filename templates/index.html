@@ -68,18 +68,6 @@
                     </div>
                     <div class="card-body">
                         <form id="presentation-form" enctype="multipart/form-data">
-                            <!-- Step 6: Number of Slides -->
-                            <div class="mb-4">
-                                <h5><i class="fas fa-sliders-h me-2 text-primary"></i>Step 6: Options</h5>
-                                <div class="row g-3 align-items-center">
-                                    <div class="col-md-12">
-                                        <label for="num_slides" class="form-label">Number of Slides:</label>
-                                        <input type="number" class="form-control" id="num_slides" name="num_slides" min="7" max="40" value="7" required>
-                                        <div class="form-text">Minimum 7, maximum 40. Default is 7. Images from template will be automatically reused.</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
                             <!-- Step 1: Text Content -->
                             <div class="mb-4">
                                 <h5><i class="fas fa-pencil-alt me-2 text-primary"></i>Step 1: Enter Your Content</h5>
@@ -159,6 +147,18 @@
                                     <i class="fas fa-file-powerpoint me-1"></i>
                                     Upload a PowerPoint template file that defines the style, colors, and layout for your presentation.
                                     Maximum file size: 50MB.
+                                </div>
+                            </div>
+
+                                                        <!-- Step 6: Number of Slides -->
+                            <div class="mb-4">
+                                <h5><i class="fas fa-sliders-h me-2 text-primary"></i>Step 6: Options</h5>
+                                <div class="row g-3 align-items-center">
+                                    <div class="col-md-12">
+                                        <label for="num_slides" class="form-label">Number of Slides:</label>
+                                        <input type="number" class="form-control" id="num_slides" name="num_slides" min="7" max="40" value="7" required>
+                                        <div class="form-text">Minimum 7, maximum 40. Default is 7. Images from template will be automatically reused.</div>
+                                    </div>
                                 </div>
                             </div>
 
