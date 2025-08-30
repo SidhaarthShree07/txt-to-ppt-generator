@@ -93,7 +93,7 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/SidhaarthShree07/txt-to-ppt-generator) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/SidhaarthShree07/txt-to-ppt-generator/blob/main/LICENSE) file for details.
 
 ## Architecture Overview
 
