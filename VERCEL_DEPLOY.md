@@ -5,7 +5,7 @@ This guide will help you deploy the Text-to-PowerPoint Generator to Vercel in ju
 ## Method 1: One-Click Deploy (Recommended)
 
 1. **Click the Deploy Button**:
-   [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/text-to-powerpoint)
+   [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SidhaarthShree07/txt-to-ppt-generator)
 
 2. **Follow the prompts**:
    - Connect your GitHub account
@@ -25,7 +25,7 @@ This guide will help you deploy the Text-to-PowerPoint Generator to Vercel in ju
 
 2. **Clone the repository**:
    ```bash
-   git clone https://github.com/your-username/text-to-powerpoint.git
+   git clone https://github.com/SidhaarthShree07/txt-to-ppt-generator.git
    cd text-to-powerpoint
    ```
 
