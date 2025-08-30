@@ -14,6 +14,7 @@ from src.llm_providers import GeminiProvider, OpenAIProvider
 from src.ppt_analyzer import PowerPointAnalyzer
 from src.slide_generator import SlideGenerator
 from src.utils import validate_file, cleanup_temp_files
+import convertapi
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -28,99 +29,35 @@ ALLOWED_EXTENSIONS = {'pptx', 'potx'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-    
-# CloudConvert API key from environment variable
-CLOUDCONVERT_API_KEY = os.getenv("CLOUDCONVERT_API_KEY", "")
+
+# Set your API key at the top of the file
+convertapi.api_credentials = os.getenv("CLOUDCONVERT_API_KEY", "")
 
 def convert_pdf_bg(session_dir):
     pptx_path = os.path.join(session_dir, 'output.pptx')
     pdf_path = os.path.join(session_dir, 'output.pdf')
 
-    if not CLOUDCONVERT_API_KEY:
-        logger.warning("CloudConvert API key not set. Skipping PDF conversion.")
-        return
-
     if not os.path.exists(pptx_path):
         logger.error(f"PPTX not found: {pptx_path}")
         return
 
-    # Only regenerate PDF if missing or older than PPTX
-    if not os.path.exists(pdf_path) or os.path.getmtime(pdf_path) < os.path.getmtime(pptx_path):
-        try:
-            logger.info("Starting CloudConvert PPTX → PDF conversion...")
+    try:
+        logger.info("Starting ConvertAPI PPTX → PDF conversion...")
 
-            # 1. Upload PPTX
-            with open(pptx_path, "rb") as f:
-                upload = requests.post(
-                    "https://api.cloudconvert.com/v2/import/upload",
-                    headers={"Authorization": f"Bearer {CLOUDCONVERT_API_KEY}"},
-                    files={"file": f}
-                ).json()
+        # Run conversion
+        result = convertapi.convert(
+            'pdf',
+            {'File': pptx_path},
+            from_format='pptx'
+        )
 
-            if "data" not in upload:
-                logger.error(f"Upload failed: {upload}")
-                return
+        # Save converted PDF
+        result.file.save(pdf_path)
+        logger.info(f"PDF saved: {pdf_path}")
 
-            input_file = upload["data"]["id"]
+    except Exception as e:
+        logger.error(f"Exception during ConvertAPI conversion: {e}")
 
-            # 2. Convert PPTX → PDF
-            job = requests.post(
-                "https://api.cloudconvert.com/v2/jobs",
-                headers={"Authorization": f"Bearer {CLOUDCONVERT_API_KEY}"},
-                json={
-                    "tasks": {
-                        "import-pptx": {
-                            "operation": "import/upload"
-                        },
-                        "convert-task": {
-                            "operation": "convert",
-                            "input": "import-pptx",
-                            "input_format": "pptx",
-                            "output_format": "pdf"
-                        },
-                        "export-pdf": {
-                            "operation": "export/url",
-                            "input": "convert-task"
-                        }
-                    }
-                }
-            ).json()
-
-            if "data" not in job:
-                logger.error(f"Job creation failed: {job}")
-                return
-
-            job_id = job["data"]["id"]
-            logger.info(f"CloudConvert job started: {job_id}")
-
-            # 3. Poll job status until finished
-            while True:
-                status = requests.get(
-                    f"https://api.cloudconvert.com/v2/jobs/{job_id}",
-                    headers={"Authorization": f"Bearer {CLOUDCONVERT_API_KEY}"}
-                ).json()
-                job_status = status["data"]["status"]
-
-                if job_status == "finished":
-                    break
-                elif job_status == "error":
-                    logger.error(f"CloudConvert job failed: {status}")
-                    return
-
-            # 4. Download PDF
-            export_task = next(
-                t for t in status["data"]["tasks"] if t["name"] == "export-pdf"
-            )
-            file_url = export_task["result"]["files"][0]["url"]
-
-            pdf_response = requests.get(file_url)
-            with open(pdf_path, "wb") as f:
-                f.write(pdf_response.content)
-
-            logger.info(f"PDF saved: {pdf_path}")
-
-        except Exception as e:
-            logger.error(f"Exception during CloudConvert conversion: {e}")
 
 # Run conversion in background
 def start_pdf_conversion(session_dir):
